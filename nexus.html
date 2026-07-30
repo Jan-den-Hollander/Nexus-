@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Nexus — vind de verbinding</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#12160f">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12160f; --panel:#1b2116; --panel-2:#212a1a; --line:#2a3322;
+    --text:#e9e4d6; --text-dim:#9aa08c;
+    --vine:#6f9457; --gold:#d0a355; --teal:#6f9a9a; --rust:#b06a52;
+    --sideA:#d0a355; --sideB:#6f9a9a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;-webkit-tap-highlight-color:transparent;}
+  h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;margin:0;}
+  .app{max-width:720px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+
+  header{padding:16px 16px 0;border-bottom:1px solid var(--line);}
+  .headrow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  header h1{font-size:1.4rem;letter-spacing:0.01em;}
+  header .sub{color:var(--text-dim);font-size:0.78rem;margin:6px 0 12px;line-height:1.5;}
+  .langsw{display:flex;gap:4px;flex-shrink:0;}
+  .langsw button{background:var(--panel-2);border:1px solid var(--line);color:var(--text-dim);font-family:inherit;font-size:0.68rem;padding:5px 8px;border-radius:5px;cursor:pointer;}
+  .langsw button.active{border-color:var(--vine);color:var(--vine);}
+
+  nav.tabs{display:flex;border-bottom:1px solid var(--line);background:var(--panel);}
+  nav.tabs button{flex:1;background:none;border:none;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;padding:12px 6px;cursor:pointer;border-bottom:2px solid transparent;}
+  nav.tabs button.active{color:var(--text);border-bottom-color:var(--vine);}
+
+  .tabpanel{display:none;flex:1;flex-direction:column;}
+  .tabpanel.active{display:flex;}
+
+  .legend{display:flex;flex-wrap:wrap;gap:10px;padding:10px 16px;font-size:0.72rem;color:var(--text-dim);border-bottom:1px solid var(--line);background:var(--panel);}
+  .legend span{display:inline-flex;align-items:center;gap:4px;}
+
+  .setup{padding:20px 16px;display:flex;flex-direction:column;gap:14px;}
+  .setup label{font-size:0.75rem;color:var(--text-dim);display:block;margin-bottom:6px;}
+  .setup input{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:6px;font-family:inherit;font-size:0.95rem;}
+  .setup input:focus{outline:1px solid var(--vine);}
+  .side-box{border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--panel);}
+  .side-box.a{border-left:3px solid var(--sideA);}
+  .side-box.b{border-left:3px solid var(--sideB);}
+  button.primary{margin-top:6px;background:var(--vine);color:#0e130a;border:none;padding:12px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:0.9rem;letter-spacing:0.02em;cursor:pointer;}
+
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);font-size:0.78rem;}
+  .turn-pill{padding:4px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;}
+  .turn-pill.a{background:rgba(208,163,85,0.18);color:var(--sideA);}
+  .turn-pill.b{background:rgba(111,154,154,0.18);color:var(--sideB);}
+  .steps{color:var(--text-dim);}
+
+  .board-wrap{flex:1;overflow:auto;background:radial-gradient(ellipse at 50% 0%, rgba(111,148,87,0.06), transparent 60%), var(--bg);position:relative;}
+  .board{position:relative;min-width:1100px;}
+  svg.edges{position:absolute;top:0;left:0;pointer-events:none;}
+  .node{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;width:96px;text-align:center;cursor:pointer;}
+  .node .bubble{width:44px;height:44px;border-radius:50%;background:var(--panel-2);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:1.3rem;}
+  .node.a .bubble{border-color:var(--sideA);}
+  .node.b .bubble{border-color:var(--sideB);}
+  .node.selected .bubble{box-shadow:0 0 0 3px rgba(255,255,255,0.15);}
+  .node.matched .bubble{box-shadow:0 0 0 4px rgba(255,255,255,0.5);animation:pulse 1.4s infinite;}
+  .node .label{font-size:0.62rem;margin-top:4px;color:var(--text);line-height:1.2;}
+  .node .rel{font-size:0.58rem;color:var(--text-dim);}
+  @keyframes pulse{0%{box-shadow:0 0 0 4px rgba(255,255,255,0.5);}50%{box-shadow:0 0 0 8px rgba(255,255,255,0.1);}100%{box-shadow:0 0 0 4px rgba(255,255,255,0.5);}}
+
+  .composer{border-top:1px solid var(--line);background:var(--panel);padding:12px 16px 16px;display:none;flex-direction:column;gap:10px;}
+  .composer.open{display:flex;}
+  .composer .hint{font-size:0.7rem;color:var(--text-dim);}
+  .emoji-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .emoji-row button{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:1.1rem;cursor:pointer;}
+  .emoji-row button.active{border-color:var(--vine);background:rgba(111,148,87,0.15);}
+  .composer input[type=text]{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:9px 10px;border-radius:6px;font-family:inherit;font-size:0.85rem;}
+  .link-types{display:flex;gap:6px;flex-wrap:wrap;}
+  .link-types button{flex:1;min-width:80px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 6px;font-size:0.68rem;color:var(--text-dim);cursor:pointer;line-height:1.3;}
+  .link-types button.active{border-color:var(--vine);color:var(--text);background:rgba(111,148,87,0.12);}
+  .composer-actions{display:flex;gap:8px;margin-top:2px;}
+  .composer-actions button{flex:1;padding:10px;border-radius:6px;font-family:inherit;font-size:0.85rem;cursor:pointer;}
+  .btn-cancel{background:transparent;border:1px solid var(--line);color:var(--text-dim);}
+  .btn-add{background:var(--vine);border:none;color:#0e130a;font-weight:600;}
+
+  .footer-bar{padding:10px 16px;border-top:1px solid var(--line);background:var(--panel);display:flex;gap:8px;}
+  .footer-bar button{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:11px;border-radius:6px;font-family:inherit;font-size:0.82rem;cursor:pointer;}
+  .footer-bar button.emph{border-color:var(--vine);color:var(--vine);}
+
+  .banner{margin:10px 16px 0;padding:12px 14px;border-radius:8px;background:rgba(111,148,87,0.14);border:1px solid var(--vine);font-size:0.82rem;line-height:1.5;}
+  .banner b{color:var(--vine);}
+  .hidden{display:none !important;}
+
+  /* --- Over tab --- */
+  .over{padding:18px 16px 30px;line-height:1.6;font-size:0.86rem;overflow-y:auto;}
+  .over h2{font-size:1.1rem;margin-bottom:8px;color:var(--gold);}
+  .over h3{font-size:0.95rem;margin:20px 0 8px;color:var(--teal);}
+  .over p{margin:0 0 10px;color:var(--text);}
+  .over ol,.over ul{margin:0 0 12px;padding-left:20px;color:var(--text);}
+  .over li{margin-bottom:6px;}
+  .over .anecdote{border-left:3px solid var(--rust);padding:10px 12px;background:var(--panel);border-radius:0 6px 6px 0;font-size:0.82rem;color:var(--text-dim);font-style:italic;margin:12px 0;}
+
+  /* --- PDF tab --- */
+  .pdftab{padding:18px 16px 30px;display:flex;flex-direction:column;gap:14px;}
+  .cert{border:1px solid var(--line);border-radius:10px;padding:24px;background:var(--panel);text-align:center;}
+  .cert h2{color:var(--gold);font-size:1.2rem;margin-bottom:14px;}
+  .cert .names{font-size:1.05rem;margin:10px 0;}
+  .cert .steps-out{font-size:0.85rem;color:var(--text-dim);margin:6px 0 16px;}
+  .cert .via{font-size:0.82rem;color:var(--text);border-top:1px solid var(--line);padding-top:12px;margin-top:10px;}
+  .cert .sig{margin-top:22px;font-size:0.68rem;color:var(--text-dim);}
+  .no-match-note{font-size:0.8rem;color:var(--text-dim);text-align:center;padding:20px;}
+
+  footer.copyright{padding:10px 16px 16px;text-align:center;font-size:0.65rem;color:var(--text-dim);border-top:1px solid var(--line);}
+
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{position:absolute;top:0;left:0;width:100%;}
+    .cert{border:1px solid #333;background:#fff;color:#111;}
+    .cert h2{color:#333;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="headrow">
+      <h1>🌿 <span data-i18n="title">Nexus</span></h1>
+      <div class="langsw">
+        <button data-lang="nl" onclick="setLang('nl')">NL</button>
+        <button data-lang="it" onclick="setLang('it')">IT</button>
+        <button data-lang="en" onclick="setLang('en')">EN</button>
+      </div>
+    </div>
+    <div class="sub" data-i18n="tagline"></div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="spel" onclick="showTab('spel')" data-i18n="tabSpel"></button>
+    <button class="tab-btn" data-tab="over" onclick="showTab('over')" data-i18n="tabOver"></button>
+    <button class="tab-btn" data-tab="pdf" onclick="showTab('pdf')" data-i18n="tabPdf"></button>
+  </nav>
+
+  <!-- ===== TAB: SPEL ===== -->
+  <div class="tabpanel active" id="tab-spel" style="flex-direction:column;flex:1;">
+
+    <div class="legend">
+      <span>— <span data-i18n="legFamily"></span></span>
+      <span>💍 <span data-i18n="legPartner"></span></span>
+      <span>🌿🤷 <span data-i18n="legBridge"></span></span>
+      <span>🎣 <span data-i18n="legFish"></span></span>
+    </div>
+
+    <div class="setup" id="setup">
+      <div class="side-box a">
+        <label data-i18n="labelA"></label>
+        <input type="text" id="nameA" placeholder="Jan">
+      </div>
+      <div class="side-box b">
+        <label data-i18n="labelB"></label>
+        <input type="text" id="nameB" placeholder="?">
+      </div>
+      <button class="primary" data-i18n="startBtn" onclick="startGame()"></button>
+    </div>
+
+    <div id="game" class="hidden" style="display:flex;flex-direction:column;flex:1;">
+      <div class="statusbar">
+        <div id="turnPill" class="turn-pill a"></div>
+        <div class="steps" id="stepCounter"></div>
+      </div>
+
+      <div id="banner" class="banner hidden"></div>
+
+      <div class="board-wrap">
+        <div class="board" id="board">
+          <svg class="edges" id="edges"></svg>
+        </div>
+      </div>
+
+      <div class="composer" id="composer">
+        <div class="hint" id="composerHint"></div>
+        <div class="emoji-row" id="emojiRow"></div>
+        <input type="text" id="nodeName" data-i18n-ph="phName">
+        <input type="text" id="nodeRel" data-i18n-ph="phRel">
+        <div class="link-types" id="linkTypes"></div>
+        <div class="composer-actions">
+          <button class="btn-cancel" data-i18n="cancelBtn" onclick="closeComposer()"></button>
+          <button class="btn-add" data-i18n="placeBtn" onclick="commitNode()"></button>
+        </div>
+      </div>
+
+      <div class="footer-bar">
+        <button id="addBtn" class="emph" data-i18n="addBtn" onclick="openComposer()"></button>
+        <button data-i18n="resetBtn" onclick="resetGame()"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: OVER ===== -->
+  <div class="tabpanel" id="tab-over">
+    <div class="over" id="overContent"></div>
+  </div>
+
+  <!-- ===== TAB: PDF ===== -->
+  <div class="tabpanel" id="tab-pdf">
+    <div class="pdftab">
+      <div id="pdfNoMatch" class="no-match-note" data-i18n="pdfNoMatch"></div>
+      <div id="pdfReady" class="hidden" style="display:flex;flex-direction:column;gap:14px;">
+        <div id="printArea">
+          <div class="cert">
+            <h2 data-i18n="certTitle"></h2>
+            <div class="names" id="certNames"></div>
+            <div class="steps-out" id="certSteps"></div>
+            <div class="via" id="certVia"></div>
+            <div class="sig">Nexus — © <span id="cryear"></span> Jan den Hollander</div>
+          </div>
+        </div>
+        <button class="primary" data-i18n="printBtn" onclick="window.print()"></button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="copyright">
+    © <span id="cryear2"></span> Jan den Hollander — <span data-i18n="footerNote"></span>
+  </footer>
+</div>
+
+<script>
+/* ===================== TRANSLATIONS ===================== */
+const TR = {
+nl: {
+  title:"Nexus", tagline:"Twee mensen, elk vanaf hun eigen kant. Bouw je netwerk uit en kijk hoeveel stappen jullie nodig hebben om elkaar te raken.",
+  tabSpel:"Spel", tabOver:"Over", tabPdf:"PDF",
+  legFamily:"familie", legPartner:"partner", legBridge:"losse band", legFish:"nog geen naam, tast rond",
+  labelA:"Naam speler A (linkerkant)", labelB:"Naam speler B (rechterkant)", startBtn:"Begin het spel",
+  phName:"naam (bv. Ome Jan)", phRel:"relatie (bv. broer van vader)",
+  cancelBtn:"Annuleer", placeBtn:"Plaats schakel", addBtn:"+ nieuwe schakel", resetBtn:"opnieuw",
+  turnA:"linkerkant aan zet", turnB:"rechterkant aan zet",
+  matchBanner:(name,total)=>`🎉 Verbinding gevonden bij "${name}" — samen ${total} stappen om elkaar te bereiken.`,
+  stepsCounter:(a,b)=>`${a} + ${b} stappen`,
+  composerHint:(name,side)=>`Nieuwe schakel vanaf ${name} (${side==='A'?'jouw':'hun'} kant)`,
+  pdfNoMatch:"Er is nog geen verbinding gevonden. Zodra beide kanten bij dezelfde naam uitkomen, verschijnt hier een certificaat dat je kunt printen of als PDF bewaren.",
+  certTitle:"Gevonden verbinding", printBtn:"Print / bewaar als PDF",
+  footerNote:"vrij te gebruiken, niet te wijzigen of door te verkopen",
+  over: `
+    <h2>Waar dit spel vandaan komt</h2>
+    <p>Er wordt wel gezegd dat ieder mens — via familie, vrienden of kennissen — in vijf tot zeven stappen verbonden is met ieder ander mens op aarde. Dat idee, bekend als "six degrees of separation", is in de jaren '60 onderzocht door psycholoog Stanley Milgram en is later bevestigd op grote sociale netwerken.</p>
+    <p>Zo'n verbinding kun je niet uitrekenen zonder toegang tot ieders complete netwerk — die data bestaat niet voor gewone mensen. Wat wél kan: het zelf ervaren. Niet als berekening, maar als spel.</p>
+    <div class="anecdote">Toevallige verbindingen schieten je vaak pas terloops te binnen. Bijvoorbeeld wanneer je ontdekt dat jij en een vreemde allebei ooit een ansichtkaart kregen van dezelfde tante — of dat een collega van je buurman toevallig je oud-klasgenoot is. Nexus probeert dat gevoel zichtbaar te maken.</div>
+    <h3>Geen winnaar, wel een ontmoeting</h3>
+    <p>Nexus is geen wedstrijd. Het doel is niet om te winnen, maar om af te tasten hoe dicht twee volslagen onbekenden eigenlijk bij elkaar staan — wie dan ook, waar ook ter wereld. Het aantal stappen wordt bijgehouden, niet om te vergelijken, maar om zichtbaar te maken hoe kort of lang de weg was.</p>
+    <h3>Spelregels</h3>
+    <ol>
+      <li>Twee spelers vullen ieder hun naam in — jij aan de linkerkant, de ander aan de rechterkant.</li>
+      <li>Om de beurt selecteer je een van je eigen personen en voeg je daar een nieuwe schakel aan toe: iemand die jij kent via die persoon.</li>
+      <li>Kies een emoji, een naam en een korte relatie-omschrijving (bv. "buurvrouw van opa").</li>
+      <li>Kies het type band: een doorlopende lijn voor familie, 💍 voor een partner, 🌿🤷 voor een losse band die toch belangrijk is, of 🎣 als je nog rondtast en nog geen concrete naam hebt.</li>
+      <li>Zodra een naam bij jou en bij de ander voorkomt, is de verbinding gevonden — de app markeert 'm en telt de totale afstand.</li>
+      <li>Bewaar een gevonden verbinding als PDF via het PDF-tabblad.</li>
+    </ol>
+  `
+},
+it: {
+  title:"Nexus", tagline:"Due persone, ciascuna dal proprio lato. Costruite la vostra rete e scoprite quanti passi servono per incontrarvi.",
+  tabSpel:"Gioco", tabOver:"Info", tabPdf:"PDF",
+  legFamily:"famiglia", legPartner:"partner", legBridge:"legame indiretto", legFish:"nessun nome ancora, si cerca",
+  labelA:"Nome giocatore A (lato sinistro)", labelB:"Nome giocatore B (lato destro)", startBtn:"Inizia il gioco",
+  phName:"nome (es. Zio Jan)", phRel:"relazione (es. fratello del padre)",
+  cancelBtn:"Annulla", placeBtn:"Aggiungi anello", addBtn:"+ nuovo anello", resetBtn:"ricomincia",
+  turnA:"tocca al lato sinistro", turnB:"tocca al lato destro",
+  matchBanner:(name,total)=>`🎉 Connessione trovata con "${name}" — insieme ${total} passi per raggiungersi.`,
+  stepsCounter:(a,b)=>`${a} + ${b} passi`,
+  composerHint:(name,side)=>`Nuovo anello a partire da ${name} (lato ${side==='A'?'tuo':'loro'})`,
+  pdfNoMatch:"Non è ancora stata trovata una connessione. Quando entrambi i lati arrivano allo stesso nome, qui apparirà un certificato da stampare o salvare come PDF.",
+  certTitle:"Connessione trovata", printBtn:"Stampa / salva come PDF",
+  footerNote:"libero da usare, non modificabile né rivendibile",
+  over: `
+    <h2>Da dove nasce questo gioco</h2>
+    <p>Si dice che ogni persona — tramite famiglia, amici o conoscenti — sia collegata a chiunque altro sulla terra in cinque o sette passaggi. Questa idea, nota come "six degrees of separation", fu studiata negli anni '60 dallo psicologo Stanley Milgram ed è stata poi confermata sulle grandi reti sociali.</p>
+    <p>Una connessione del genere non si può calcolare senza accesso alla rete completa di ognuno — dati che per le persone comuni non esistono. Quello che si può fare, invece, è viverla in prima persona. Non come calcolo, ma come gioco.</p>
+    <div class="anecdote">Le connessioni casuali spesso emergono per caso. Per esempio quando scopri che tu e uno sconosciuto avete ricevuto entrambi una cartolina dalla stessa zia — o che un collega del tuo vicino è per caso un tuo ex compagno di scuola. Nexus cerca di rendere visibile proprio questa sensazione.</div>
+    <h3>Non si vince, ci si incontra</h3>
+    <p>Nexus non è una gara. L'obiettivo non è vincere, ma scoprire quanto siano vicine due persone del tutto sconosciute — chiunque esse siano, ovunque nel mondo. Il numero di passi viene registrato non per confrontare, ma per rendere visibile quanto è stato breve o lungo il percorso.</p>
+    <h3>Regole del gioco</h3>
+    <ol>
+      <li>Due giocatori inseriscono il proprio nome — tu a sinistra, l'altro a destra.</li>
+      <li>A turno selezioni una delle tue persone e aggiungi un nuovo anello: qualcuno che conosci tramite quella persona.</li>
+      <li>Scegli un emoji, un nome e una breve descrizione della relazione (es. "vicina di nonno").</li>
+      <li>Scegli il tipo di legame: linea continua per la famiglia, 💍 per un partner, 🌿🤷 per un legame indiretto ma importante, o 🎣 se stai ancora cercando e non hai un nome concreto.</li>
+      <li>Quando un nome compare da entrambi i lati, la connessione è trovata — l'app la evidenzia e conta la distanza totale.</li>
+      <li>Salva una connessione trovata come PDF nella scheda PDF.</li>
+    </ol>
+  `
+},
+en: {
+  title:"Nexus", tagline:"Two people, each from their own side. Grow your network and see how many steps it takes to reach each other.",
+  tabSpel:"Game", tabOver:"About", tabPdf:"PDF",
+  legFamily:"family", legPartner:"partner", legBridge:"loose tie", legFish:"no name yet, reaching out",
+  labelA:"Player A name (left side)", labelB:"Player B name (right side)", startBtn:"Start the game",
+  phName:"name (e.g. Uncle John)", phRel:"relation (e.g. father's brother)",
+  cancelBtn:"Cancel", placeBtn:"Place link", addBtn:"+ new link", resetBtn:"restart",
+  turnA:"left side's turn", turnB:"right side's turn",
+  matchBanner:(name,total)=>`🎉 Connection found at "${name}" — ${total} combined steps to reach each other.`,
+  stepsCounter:(a,b)=>`${a} + ${b} steps`,
+  composerHint:(name,side)=>`New link from ${name} (${side==='A'?'your':'their'} side)`,
+  pdfNoMatch:"No connection has been found yet. Once both sides reach the same name, a certificate will appear here that you can print or save as PDF.",
+  certTitle:"Connection found", printBtn:"Print / save as PDF",
+  footerNote:"free to use, not to be altered or resold",
+  over: `
+    <h2>Where this game comes from</h2>
+    <p>It's often said that every person — through family, friends or acquaintances — is connected to anyone else on earth in five to seven steps. This idea, known as "six degrees of separation", was studied in the 1960s by psychologist Stanley Milgram and has since been confirmed on large social networks.</p>
+    <p>You can't calculate such a connection without access to everyone's complete network — that data simply doesn't exist for ordinary people. What you can do is experience it yourself. Not as a calculation, but as a game.</p>
+    <div class="anecdote">Chance connections often only occur to you in passing — like discovering that you and a stranger both once received a postcard from the same aunt, or that a colleague of your neighbour happens to be an old classmate of yours. Nexus tries to make that feeling visible.</div>
+    <h3>No winner, just a meeting point</h3>
+    <p>Nexus isn't a competition. The goal isn't to win, but to probe how close two complete strangers really are to each other — whoever they are, wherever in the world. The step count is kept not to compare, but to show how short or long the path turned out to be.</p>
+    <h3>How to play</h3>
+    <ol>
+      <li>Two players each enter their name — you on the left, the other on the right.</li>
+      <li>Taking turns, select one of your own people and add a new link: someone you know through that person.</li>
+      <li>Pick an emoji, a name, and a short relation description (e.g. "grandfather's neighbour").</li>
+      <li>Choose the tie type: a plain line for family, 💍 for a partner, 🌿🤷 for a loose but meaningful tie, or 🎣 if you're still reaching and don't have a concrete name yet.</li>
+      <li>Once a name appears on both sides, the connection is found — the app highlights it and counts the total distance.</li>
+      <li>Save a found connection as a PDF from the PDF tab.</li>
+    </ol>
+  `
+}
+};
+
+let currentLang = 'nl';
+
+function setLang(l){
+  currentLang = l;
+  document.querySelectorAll('.langsw button').forEach(b=>b.classList.toggle('active', b.dataset.lang===l));
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.dataset.i18n;
+    if(TR[l][key] !== undefined && typeof TR[l][key] === 'string') el.textContent = TR[l][key];
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    const key = el.dataset.i18nPh;
+    if(TR[l][key]) el.placeholder = TR[l][key];
+  });
+  document.getElementById('overContent').innerHTML = TR[l].over;
+  if(state){ render(); }
+  else {
+    document.getElementById('pdfNoMatch').textContent = TR[l].pdfNoMatch;
+  }
+}
+
+function showTab(name){
+  document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelector(`.tab-btn[data-tab="${name}"]`).classList.add('active');
+}
+
+/* ===================== GAME LOGIC ===================== */
+const EMOJIS = ['🧑','👩','🧔','👴','👵','👦','👧','🧑‍🦱','🧕','👨‍🦳','👩‍🦳','🧓'];
+const LINKTYPES = [
+  {id:'familie', symbol:''},
+  {id:'partner', symbol:'💍'},
+  {id:'brug', symbol:'🌿🤷‍♂️'},
+  {id:'vissen', symbol:'🎣'}
+];
+function linkLabel(id){
+  const t = TR[currentLang];
+  if(id==='familie') return t.legFamily;
+  if(id==='partner') return '💍 '+t.legPartner;
+  if(id==='brug') return '🌿🤷 '+t.legBridge;
+  if(id==='vissen') return '🎣 '+t.legFish;
+}
+
+let state = null;
+
+function startGame(){
+  const nameA = document.getElementById('nameA').value.trim() || 'A';
+  const nameB = document.getElementById('nameB').value.trim() || 'B';
+  state = {
+    turn:'A',
+    nodes:{
+      A:[{id:'A-0',parentId:null,emoji:'🧑',name:nameA,relation:'',linkType:null,depth:0}],
+      B:[{id:'B-0',parentId:null,emoji:'🧑',name:nameB,relation:'',linkType:null,depth:0}]
+    },
+    selected:{A:'A-0',B:'B-0'},
+    pendingEmoji:EMOJIS[0],
+    pendingType:'familie',
+    matched:null
+  };
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+  document.getElementById('game').style.display='flex';
+  buildComposerChoices();
+  render();
+}
+
+function resetGame(){
+  state = null;
+  document.getElementById('game').classList.add('hidden');
+  document.getElementById('setup').classList.remove('hidden');
+  document.getElementById('banner').classList.add('hidden');
+  document.getElementById('pdfReady').classList.add('hidden');
+  document.getElementById('pdfNoMatch').classList.remove('hidden');
+}
+
+function buildComposerChoices(){
+  const er = document.getElementById('emojiRow');
+  er.innerHTML='';
+  EMOJIS.forEach(e=>{
+    const b=document.createElement('button');
+    b.textContent=e; b.className=(e===state.pendingEmoji)?'active':'';
+    b.onclick=()=>{state.pendingEmoji=e;buildComposerChoices();};
+    er.appendChild(b);
+  });
+  const lt=document.getElementById('linkTypes');
+  lt.innerHTML='';
+  LINKTYPES.forEach(t=>{
+    const b=document.createElement('button');
+    b.textContent=linkLabel(t.id); b.className=(t.id===state.pendingType)?'active':'';
+    b.onclick=()=>{state.pendingType=t.id;buildComposerChoices();};
+    lt.appendChild(b);
+  });
+}
+
+function openComposer(){
+  const side=state.turn;
+  document.getElementById('composerHint').textContent =
+    TR[currentLang].composerHint(nodeById(side,state.selected[side]).name, side);
+  document.getElementById('nodeName').value='';
+  document.getElementById('nodeRel').value='';
+  document.getElementById('composer').classList.add('open');
+}
+function closeComposer(){ document.getElementById('composer').classList.remove('open'); }
+function nodeById(side,id){ return state.nodes[side].find(n=>n.id===id); }
+
+function commitNode(){
+  const side=state.turn, other= side==='A'?'B':'A';
+  let name=document.getElementById('nodeName').value.trim();
+  const rel=document.getElementById('nodeRel').value.trim();
+  if(state.pendingType==='vissen' && !name) name='?';
+  if(!name){ document.getElementById('nodeName').focus(); return; }
+
+  const parent=nodeById(side,state.selected[side]);
+  const id=side+'-'+state.nodes[side].length;
+  const node={id,parentId:parent.id,emoji:state.pendingEmoji,name,relation:rel,linkType:state.pendingType,depth:parent.depth+1};
+  state.nodes[side].push(node);
+  state.selected[side]=id;
+
+  if(state.pendingType!=='vissen'){
+    const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    const hit=state.nodes[other].find(n=>n.parentId!==null && norm(n.name)===norm(name));
+    if(hit) state.matched={a: side==='A'?node:hit, b: side==='A'?hit:node};
+  }
+
+  closeComposer();
+  state.turn=other;
+  render();
+}
+
+function stepsOf(side){ return state.nodes[side].length-1; }
+
+function render(){
+  const t=TR[currentLang];
+  document.getElementById('turnPill').className='turn-pill '+state.turn.toLowerCase();
+  document.getElementById('turnPill').textContent = state.turn==='A' ? t.turnA : t.turnB;
+  document.getElementById('stepCounter').textContent = t.stepsCounter(stepsOf('A'),stepsOf('B'));
+
+  const banner=document.getElementById('banner');
+  if(state.matched){
+    const total=stepsOf('A')+stepsOf('B');
+    banner.classList.remove('hidden');
+    banner.textContent = t.matchBanner(state.matched.a.name, total);
+    updateCertificate();
+  } else {
+    banner.classList.add('hidden');
+  }
+  layoutAndDraw();
+}
+
+function updateCertificate(){
+  const t=TR[currentLang];
+  document.getElementById('pdfNoMatch').classList.add('hidden');
+  document.getElementById('pdfReady').classList.remove('hidden');
+  const nameA = state.nodes.A[0].name, nameB = state.nodes.B[0].name;
+  const total = stepsOf('A')+stepsOf('B');
+  document.getElementById('certNames').textContent = `${nameA}  ⟷  ${nameB}`;
+  document.getElementById('certSteps').textContent = t.stepsCounter(stepsOf('A'),stepsOf('B')) + ` (${total} totaal/totale/total)`;
+  document.getElementById('certVia').textContent = `${t.certTitle}: "${state.matched.a.name}"`;
+  document.getElementById('cryear').textContent = new Date().getFullYear();
+}
+
+function layoutAndDraw(){
+  const rowH=64, colW=130, margin=60, topPad=30;
+  const maxRows=Math.max(state.nodes.A.length,state.nodes.B.length);
+  const boardW=Math.max(1100, margin*2+colW*8);
+  const boardH=Math.max(400, topPad*2+maxRows*rowH);
+  const board=document.getElementById('board');
+  board.style.width=boardW+'px'; board.style.height=boardH+'px';
+
+  const positions={};
+  state.nodes.A.forEach((n,i)=>{ positions[n.id]={x:margin+n.depth*colW,y:topPad+i*rowH,side:'A'}; });
+  state.nodes.B.forEach((n,i)=>{ positions[n.id]={x:boardW-margin-n.depth*colW,y:topPad+i*rowH,side:'B'}; });
+
+  board.querySelectorAll('.node').forEach(el=>el.remove());
+  const svg=document.getElementById('edges');
+  svg.setAttribute('width',boardW); svg.setAttribute('height',boardH); svg.innerHTML='';
+
+  ['A','B'].forEach(side=>{
+    state.nodes[side].forEach(n=>{
+      if(n.parentId){
+        const p=positions[n.parentId], c=positions[n.id];
+        const midX=(p.x+c.x)/2;
+        const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+        path.setAttribute('d',`M ${p.x} ${p.y} C ${midX} ${p.y}, ${midX} ${c.y}, ${c.x} ${c.y}`);
+        path.setAttribute('fill','none');
+        let stroke='#6f9457', dash='';
+        if(n.linkType==='partner') stroke='#d0a355';
+        if(n.linkType==='brug'){ stroke='#6f9a9a'; dash='4,4'; }
+        if(n.linkType==='vissen'){ stroke='#b06a52'; dash='2,5'; }
+        path.setAttribute('stroke',stroke); path.setAttribute('stroke-width','2');
+        if(dash) path.setAttribute('stroke-dasharray',dash);
+        svg.appendChild(path);
+        if(n.linkType && n.linkType!=='familie'){
+          const sym=LINKTYPES.find(t=>t.id===n.linkType).symbol;
+          const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+          txt.setAttribute('x',midX); txt.setAttribute('y',(p.y+c.y)/2-4);
+          txt.setAttribute('text-anchor','middle'); txt.setAttribute('font-size','13');
+          txt.textContent=sym; svg.appendChild(txt);
+        }
+      }
+    });
+  });
+
+  ['A','B'].forEach(side=>{
+    state.nodes[side].forEach(n=>{
+      const pos=positions[n.id];
+      const div=document.createElement('div');
+      let cls='node '+side.toLowerCase();
+      if(state.selected[side]===n.id) cls+=' selected';
+      if(state.matched && (state.matched.a.id===n.id||state.matched.b.id===n.id)) cls+=' matched';
+      div.className=cls; div.style.left=pos.x+'px'; div.style.top=pos.y+'px';
+      div.innerHTML=`<div class="bubble">${n.emoji}</div><div class="label">${n.name}</div><div class="rel">${n.relation||''}</div>`;
+      div.onclick=()=>{ if(side===state.turn){ state.selected[side]=n.id; render(); } };
+      board.appendChild(div);
+    });
+  });
+}
+
+/* ===================== COPYRIGHT PROTECTION ===================== */
+(function(){
+  const NOTICE = "© Jan den Hollander";
+  function blockApp(reason){
+    document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#12160f;color:#e9e4d6;font-family:monospace;text-align:center;padding:20px;">' +
+      '<div>Deze app is beschermd materiaal van Jan den Hollander.<br>Integriteitscontrole mislukt (' + reason + ').</div></div>';
+  }
+  window.addEventListener('load', function(){
+    const footer = document.querySelector('footer.copyright');
+    if(!footer || !footer.textContent.includes('Jan den Hollander')){ blockApp('footer'); return; }
+    const observer = new MutationObserver(function(){
+      const f = document.querySelector('footer.copyright');
+      if(!f || !f.textContent.includes('Jan den Hollander')){
+        observer.disconnect();
+        blockApp('gewijzigd');
+      }
+    });
+    observer.observe(document.body, {childList:true, subtree:true, characterData:true});
+  });
+})();
+
+/* ===================== PWA ===================== */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+/* ===================== INIT ===================== */
+document.getElementById('cryear2').textContent = new Date().getFullYear();
+setLang('nl');
+</script>
+</body>
+</html>
