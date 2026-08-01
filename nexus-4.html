@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Nexus — vind de verbinding</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#12160f">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#12160f; --panel:#1b2116; --panel-2:#212a1a; --line:#2a3322;
+    --text:#e9e4d6; --text-dim:#9aa08c;
+    --vine:#6f9457; --gold:#d0a355; --teal:#6f9a9a; --rust:#b06a52;
+    --sideA:#d0a355; --sideB:#6f9a9a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:'IBM Plex Mono',monospace;-webkit-tap-highlight-color:transparent;}
+  h1,h2,h3{font-family:'Fraunces',serif;font-weight:600;margin:0;}
+  .app{max-width:720px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+
+  header{padding:16px 16px 0;border-bottom:1px solid var(--line);}
+  .headrow{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  header h1{font-size:1.4rem;letter-spacing:0.01em;}
+  header .sub{color:var(--text-dim);font-size:0.78rem;margin:6px 0 12px;line-height:1.5;}
+  .langsw{display:flex;gap:4px;flex-shrink:0;}
+  .langsw button{background:var(--panel-2);border:1px solid var(--line);color:var(--text-dim);font-family:inherit;font-size:0.68rem;padding:5px 8px;border-radius:5px;cursor:pointer;}
+  .langsw button.active{border-color:var(--vine);color:var(--vine);}
+
+  nav.tabs{display:flex;border-bottom:1px solid var(--line);background:var(--panel);}
+  nav.tabs button{flex:1;background:none;border:none;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;font-size:0.78rem;padding:12px 6px;cursor:pointer;border-bottom:2px solid transparent;}
+  nav.tabs button.active{color:var(--text);border-bottom-color:var(--vine);}
+
+  .tabpanel{display:none;flex:1;flex-direction:column;}
+  .tabpanel.active{display:flex;}
+
+  .legend{display:flex;flex-wrap:wrap;gap:10px;padding:10px 16px;font-size:0.72rem;color:var(--text-dim);border-bottom:1px solid var(--line);background:var(--panel);}
+  .legend span{display:inline-flex;align-items:center;gap:4px;}
+
+  .setup{padding:20px 16px;display:flex;flex-direction:column;gap:14px;}
+  .mode-pick{display:flex;flex-direction:column;gap:10px;}
+  .mode-btn{width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);color:var(--text);padding:14px;border-radius:8px;font-family:'IBM Plex Mono',monospace;cursor:pointer;display:flex;flex-direction:column;gap:3px;}
+  .mode-btn span{font-size:0.92rem;font-weight:600;}
+  .mode-btn small{font-size:0.72rem;color:var(--text-dim);line-height:1.4;}
+  .mode-btn.active{border-color:var(--vine);background:rgba(111,148,87,0.1);}
+  .mode-btn.active span{color:var(--vine);}
+  .setup label{font-size:0.75rem;color:var(--text-dim);display:block;margin-bottom:6px;}
+  .setup input{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:10px 12px;border-radius:6px;font-family:inherit;font-size:0.95rem;}
+  .setup input:focus{outline:1px solid var(--vine);}
+  .side-box{border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--panel);}
+  .side-box.a{border-left:3px solid var(--sideA);}
+  .side-box.b{border-left:3px solid var(--sideB);}
+  button.primary{margin-top:6px;background:var(--vine);color:#0e130a;border:none;padding:12px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:0.9rem;letter-spacing:0.02em;cursor:pointer;}
+
+  .statusbar{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line);font-size:0.78rem;}
+  .frompill{padding:7px 16px;background:var(--panel);border-bottom:1px solid var(--line);font-size:0.72rem;color:var(--gold);}
+  .turn-pill{padding:4px 10px;border-radius:20px;font-size:0.72rem;font-weight:600;}
+  .turn-pill.a{background:rgba(208,163,85,0.18);color:var(--sideA);}
+  .turn-pill.b{background:rgba(111,154,154,0.18);color:var(--sideB);}
+  .steps{color:var(--text-dim);}
+
+  .board-wrap{flex:1;overflow:auto;background:radial-gradient(ellipse at 50% 0%, rgba(111,148,87,0.06), transparent 60%), var(--bg);position:relative;}
+  .board{position:relative;}
+  svg.edges{position:absolute;top:0;left:0;pointer-events:none;}
+  .node{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;width:96px;text-align:center;cursor:pointer;}
+  .node .bubble{width:44px;height:44px;border-radius:50%;background:var(--panel-2);border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:1.3rem;}
+  .node.a .bubble{border-color:var(--sideA);}
+  .node.b .bubble{border-color:var(--sideB);}
+  .node.root .bubble{width:58px;height:58px;background:var(--text);border-width:3px;font-size:1.7rem;box-shadow:0 0 0 6px rgba(233,228,214,0.12);}
+  .node.root .label{font-weight:600;}
+  .node.selected .bubble{background:var(--gold);border-color:#f0e6c8;animation:activepulse 1.5s infinite;}
+  .node.selected .label{color:var(--gold);font-weight:600;}
+  .node.selected .active-tag{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:0.9rem;animation:bob 1.2s infinite;}
+  @keyframes activepulse{
+    0%{box-shadow:0 0 0 3px rgba(233,228,214,0.9), 0 0 0 3px rgba(208,163,85,0.6);}
+    50%{box-shadow:0 0 0 8px rgba(233,228,214,0.15), 0 0 16px 8px rgba(208,163,85,0.35);}
+    100%{box-shadow:0 0 0 3px rgba(233,228,214,0.9), 0 0 0 3px rgba(208,163,85,0.6);}
+  }
+  @keyframes bob{
+    0%,100%{transform:translateX(-50%) translateY(0);}
+    50%{transform:translateX(-50%) translateY(-4px);}
+  }
+  .node.matched .bubble{box-shadow:0 0 0 4px rgba(255,255,255,0.5);animation:pulse 1.4s infinite;}
+  .node .label{font-size:0.62rem;margin-top:4px;color:var(--text);line-height:1.2;}
+  .node .rel{font-size:0.58rem;color:var(--text-dim);}
+  @keyframes pulse{0%{box-shadow:0 0 0 4px rgba(255,255,255,0.5);}50%{box-shadow:0 0 0 8px rgba(255,255,255,0.1);}100%{box-shadow:0 0 0 4px rgba(255,255,255,0.5);}}
+
+  .composer{border-top:1px solid var(--line);background:var(--panel);padding:12px 16px 16px;display:none;flex-direction:column;gap:10px;}
+  .composer.open{display:flex;}
+  .composer .hint{font-size:0.7rem;color:var(--text-dim);}
+  .emoji-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .emoji-row button{background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:6px 8px;font-size:1.1rem;cursor:pointer;}
+  .emoji-row button.active{border-color:var(--vine);background:rgba(111,148,87,0.15);}
+  .composer input[type=text]{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:9px 10px;border-radius:6px;font-family:inherit;font-size:0.85rem;}
+  .link-types{display:flex;gap:6px;flex-wrap:wrap;}
+  .link-types button{flex:1;min-width:80px;background:var(--panel-2);border:1px solid var(--line);border-radius:6px;padding:8px 6px;font-size:0.68rem;color:var(--text-dim);cursor:pointer;line-height:1.3;}
+  .link-types button.active{border-color:var(--vine);color:var(--text);background:rgba(111,148,87,0.12);}
+  .composer-actions{display:flex;gap:8px;margin-top:2px;}
+  .composer-actions button{flex:1;padding:10px;border-radius:6px;font-family:inherit;font-size:0.85rem;cursor:pointer;}
+  .btn-cancel{background:transparent;border:1px solid var(--line);color:var(--text-dim);}
+  .btn-add{background:var(--vine);border:none;color:#0e130a;font-weight:600;}
+
+  .footer-bar{padding:10px 16px;border-top:1px solid var(--line);background:var(--panel);display:flex;gap:8px;}
+  .footer-bar + .footer-bar{border-top:none;padding-top:0;}
+  .footer-bar button{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--text);padding:11px;border-radius:6px;font-family:inherit;font-size:0.82rem;cursor:pointer;}
+  .footer-bar button.emph{border-color:var(--vine);color:var(--vine);}
+  #endRingBtn{border-color:var(--gold);color:var(--gold);}
+
+  .banner{margin:10px 16px 0;padding:12px 14px;border-radius:8px;background:rgba(111,148,87,0.14);border:1px solid var(--vine);font-size:0.82rem;line-height:1.5;}
+  .banner b{color:var(--vine);}
+  .hidden{display:none !important;}
+
+  /* --- Over tab --- */
+  .over{padding:18px 16px 30px;line-height:1.6;font-size:0.86rem;overflow-y:auto;}
+  .over h2{font-size:1.1rem;margin-bottom:8px;color:var(--gold);}
+  .over h3{font-size:0.95rem;margin:20px 0 8px;color:var(--teal);}
+  .over p{margin:0 0 10px;color:var(--text);}
+  .over ol,.over ul{margin:0 0 12px;padding-left:20px;color:var(--text);}
+  .over li{margin-bottom:6px;}
+  .over .anecdote{border-left:3px solid var(--rust);padding:10px 12px;background:var(--panel);border-radius:0 6px 6px 0;font-size:0.82rem;color:var(--text-dim);font-style:italic;margin:12px 0;}
+
+  /* --- PDF tab --- */
+  .pdftab{padding:18px 16px 30px;display:flex;flex-direction:column;gap:14px;}
+  .cert{border:1px solid var(--line);border-radius:10px;padding:24px;background:var(--panel);text-align:center;}
+  .cert h2{color:var(--gold);font-size:1.2rem;margin-bottom:14px;}
+  .cert .names{font-size:1.05rem;margin:10px 0;}
+  .cert .steps-out{font-size:0.85rem;color:var(--text-dim);margin:6px 0 16px;}
+  .cert .via{font-size:0.82rem;color:var(--text);border-top:1px solid var(--line);padding-top:12px;margin-top:10px;}
+  .cert .sig{margin-top:22px;font-size:0.68rem;color:var(--text-dim);}
+  .no-match-note{font-size:0.8rem;color:var(--text-dim);text-align:center;padding:20px;}
+
+  footer.copyright{padding:10px 16px 16px;text-align:center;font-size:0.65rem;color:var(--text-dim);border-top:1px solid var(--line);}
+
+  .promptstab{padding:18px 16px 30px;overflow-y:auto;}
+  .mode-btn.small-btn{padding:10px 12px;}
+  .mode-btn.small-btn span{font-size:0.82rem;}
+  .prompt-group-title{font-size:0.95rem;font-family:'Fraunces',serif;font-weight:600;color:var(--teal);margin:22px 0 10px;}
+  .prompt-group-title:first-child{margin-top:6px;}
+  .prompt-card{border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:12px 14px;margin-bottom:12px;}
+  .prompt-card h4{font-size:0.82rem;color:var(--gold);margin:0 0 6px;font-family:'IBM Plex Mono',monospace;}
+  .prompt-card pre{white-space:pre-wrap;word-break:break-word;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;line-height:1.55;color:var(--text);background:var(--panel-2);border-radius:6px;padding:10px;margin:0 0 8px;}
+  .prompt-card button{background:var(--panel-2);border:1px solid var(--vine);color:var(--vine);font-family:inherit;font-size:0.72rem;padding:7px 12px;border-radius:5px;cursor:pointer;}
+  .prompt-card button.copied{border-color:var(--gold);color:var(--gold);}
+
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{position:absolute;top:0;left:0;width:100%;}
+    .cert{border:1px solid #333;background:#fff;color:#111;}
+    .cert h2{color:#333;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="headrow">
+      <h1>🌿 <span data-i18n="title">Nexus</span></h1>
+      <div class="langsw">
+        <button data-lang="nl" onclick="setLang('nl')">NL</button>
+        <button data-lang="it" onclick="setLang('it')">IT</button>
+        <button data-lang="en" onclick="setLang('en')">EN</button>
+      </div>
+    </div>
+    <div class="sub" data-i18n="tagline"></div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="spel" onclick="showTab('spel')" data-i18n="tabSpel"></button>
+    <button class="tab-btn" data-tab="over" onclick="showTab('over')" data-i18n="tabOver"></button>
+    <button class="tab-btn" data-tab="prompts" onclick="showTab('prompts')" data-i18n="tabPrompts"></button>
+    <button class="tab-btn" data-tab="pdf" onclick="showTab('pdf')" data-i18n="tabPdf"></button>
+  </nav>
+
+  <!-- ===== TAB: SPEL ===== -->
+  <div class="tabpanel active" id="tab-spel" style="flex-direction:column;flex:1;">
+
+    <div class="legend">
+      <span>— <span data-i18n="legFamily"></span></span>
+      <span>💍 <span data-i18n="legPartner"></span></span>
+      <span>🌿🤷 <span data-i18n="legBridge"></span></span>
+      <span>🎣 <span data-i18n="legFish"></span></span>
+    </div>
+
+    <div class="setup" id="setup">
+      <div class="mode-pick" id="modePick">
+        <button class="mode-btn" id="modeBtnLive" onclick="chooseMode('live')">
+          <span data-i18n="modeLiveTitle"></span>
+          <small data-i18n="modeLiveSub"></small>
+        </button>
+        <button class="mode-btn" id="modeBtnSolo" onclick="chooseMode('solo')">
+          <span data-i18n="modeSoloTitle"></span>
+          <small data-i18n="modeSoloSub"></small>
+        </button>
+      </div>
+      <div id="setupFields" class="hidden" style="display:flex;flex-direction:column;gap:14px;">
+        <div class="side-box a">
+          <label id="labelAText"></label>
+          <input type="text" id="nameA" placeholder="Jan">
+        </div>
+        <div class="side-box b">
+          <label id="labelBText"></label>
+          <input type="text" id="nameB" placeholder="?">
+        </div>
+        <button class="primary" data-i18n="startBtn" onclick="startGame()"></button>
+      </div>
+    </div>
+
+    <div id="game" class="hidden" style="display:flex;flex-direction:column;flex:1;">
+      <div class="statusbar">
+        <div id="turnPill" class="turn-pill a"></div>
+        <div class="steps" id="stepCounter"></div>
+      </div>
+      <div class="frompill" id="fromPill"></div>
+
+      <div id="banner" class="banner hidden"></div>
+
+      <div class="board-wrap">
+        <div class="board" id="board">
+          <svg class="edges" id="edges"></svg>
+        </div>
+      </div>
+
+      <div class="composer" id="composer">
+        <div class="hint" id="composerHint"></div>
+        <div class="emoji-row" id="emojiRow"></div>
+        <input type="text" id="nodeName" data-i18n-ph="phName">
+        <input type="text" id="nodeRel" data-i18n-ph="phRel">
+        <div class="link-types" id="linkTypes"></div>
+        <div class="composer-actions">
+          <button class="btn-cancel" data-i18n="cancelBtn" onclick="closeComposer()"></button>
+          <button class="btn-add" data-i18n="placeBtn" onclick="commitNode()"></button>
+        </div>
+      </div>
+
+      <div class="footer-bar">
+        <button id="addBtn" class="emph" data-i18n="addBtn" onclick="openComposer()"></button>
+        <button id="endRingBtn" data-i18n="endRingBtn" onclick="endRing()"></button>
+      </div>
+      <div class="footer-bar">
+        <button data-i18n="resetBtn" onclick="resetGame()"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: OVER ===== -->
+  <div class="tabpanel" id="tab-over">
+    <div class="over" id="overContent"></div>
+  </div>
+
+  <!-- ===== TAB: PROMPTS / ZOEKHULP ===== -->
+  <div class="tabpanel" id="tab-prompts">
+    <div class="promptstab">
+      <div class="sub" data-i18n="promptsIntro" style="padding:0 0 12px;"></div>
+      <div class="mode-pick" style="margin-bottom:6px;">
+        <button class="mode-btn small-btn active" id="promptModeLive" onclick="showPromptMode('live')">
+          <span data-i18n="modeLiveTitle"></span>
+        </button>
+        <button class="mode-btn small-btn" id="promptModeSolo" onclick="showPromptMode('solo')">
+          <span data-i18n="modeSoloTitle"></span>
+        </button>
+      </div>
+      <div id="promptList"></div>
+    </div>
+  </div>
+
+  <!-- ===== TAB: PDF ===== -->
+  <div class="tabpanel" id="tab-pdf">
+    <div class="pdftab">
+      <div id="pdfNoMatch" class="no-match-note" data-i18n="pdfNoMatch"></div>
+      <div id="pdfReady" class="hidden" style="display:flex;flex-direction:column;gap:14px;">
+        <div id="printArea">
+          <div class="cert">
+            <h2 data-i18n="certTitle"></h2>
+            <div class="names" id="certNames"></div>
+            <div class="steps-out" id="certSteps"></div>
+            <div class="via" id="certVia"></div>
+            <div class="sig">Nexus — © <span id="cryear"></span> Jan den Hollander</div>
+          </div>
+        </div>
+        <button class="primary" data-i18n="printBtn" onclick="window.print()"></button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="copyright">
+    © <span id="cryear2"></span> Jan den Hollander — <span data-i18n="footerNote"></span>
+  </footer>
+</div>
+
+<script>
+/* ===================== TRANSLATIONS ===================== */
+const TR = {
+nl: {
+  title:"Nexus", tagline:"Twee mensen, elk vanaf hun eigen kant. Bouw je netwerk uit en kijk hoeveel stappen jullie nodig hebben om elkaar te raken.",
+  tabSpel:"Spel", tabOver:"Over", tabPdf:"PDF", tabPrompts:"Zoekhulp",
+  promptsIntro:"Kant-en-klare prompts om te kopiëren en plakken in een AI-assistent — per modus en per zoekfase. Vul de haakjes [...] in met je eigen gegevens voordat je plakt.",
+  copyBtn:"Kopieer", copiedBtn:"Gekopieerd ✓",
+  legFamily:"familie", legPartner:"partner", legBridge:"losse band", legFish:"nog geen naam, tast rond",
+  labelA:"Naam speler A (onderaan)", labelB:"Naam speler B (bovenaan)", startBtn:"Begin het spel",
+  modeLiveTitle:"Heden — samen met iemand anders", modeLiveSub:"Twee spelers, live, ieder vanaf hun eigen kant.",
+  modeSoloTitle:"Verleden — alleen, naar een historische persoon", modeSoloSub:"Jij zoekt zelf uit hoe jij verbonden bent met iemand uit de geschiedenis.",
+  labelSelf:"Jouw naam", labelHistoric:"Historische persoon (het doel)",
+  phHistoric:"bv. Napoleon Bonaparte",
+  nextCircleBtn:"Volgende cirkel →",
+  soloRing:(n)=>`jouw cirkel ${n}`,
+  circlesWord:"cirkels",
+  matchBannerSolo:(name,total)=>`🎉 Verbinding gevonden bij "${name}" — in ${total} cirkels uitgezocht.`,
+  phName:"naam (bv. Ome Jan)", phRel:"relatie (bv. broer van vader)",
+  cancelBtn:"Annuleer", placeBtn:"Plaats vislijn", addBtn:"+ vislijn uitgooien", endRingBtn:"Cirkel afronden →", resetBtn:"opnieuw",
+  turnA:"speler onderaan aan zet", turnB:"speler bovenaan aan zet",
+  ringLabel:(n)=>`cirkel ${n}`,
+  matchBanner:(name,total)=>`🎉 Verbinding gevonden bij "${name}" — samen ${total} cirkels om elkaar te bereiken.`,
+  stepsCounter:(a,b)=>`${a} + ${b} cirkels`,
+  composerHint:(name,side)=>`Nieuwe vislijn vanaf ${name} (${side==='A'?'jouw':'hun'} kant)`,
+  fromLabel:(name)=>`vertrekpunt: ${name} — tik een ander bolletje aan om te wisselen`,
+  pdfNoMatch:"Er is nog geen verbinding gevonden. Zodra beide kanten bij dezelfde naam uitkomen, verschijnt hier een certificaat dat je kunt printen of als PDF bewaren.",
+  certTitle:"Gevonden verbinding", printBtn:"Print / bewaar als PDF",
+  footerNote:"vrij te gebruiken, niet te wijzigen of door te verkopen",
+  over: `
+    <h2>Waar dit spel vandaan komt</h2>
+    <p>Er wordt wel gezegd dat ieder mens — via familie, vrienden of kennissen — in vijf tot zeven stappen verbonden is met ieder ander mens op aarde. Dat idee, bekend als "six degrees of separation", is in de jaren '60 onderzocht door psycholoog Stanley Milgram en is later bevestigd op grote sociale netwerken.</p>
+    <p>Zo'n verbinding kun je niet uitrekenen zonder toegang tot ieders complete netwerk — die data bestaat niet voor gewone mensen. Wat wél kan: het zelf ervaren. Niet als berekening, maar als spel.</p>
+    <div class="anecdote">Toevallige verbindingen schieten je vaak pas terloops te binnen. Bijvoorbeeld wanneer je ontdekt dat jij en een vreemde allebei ooit een ansichtkaart kregen van dezelfde tante — of dat een collega van je buurman toevallig je oud-klasgenoot is. Nexus probeert dat gevoel zichtbaar te maken.</div>
+    <h3>Heden of verleden</h3>
+    <p>Nexus kent twee vormen. In <b>Heden</b> speel je live met iemand anders, ieder vanaf je eigen kant. In <b>Verleden</b> speel je alleen: je kiest een historische persoon als doel en zoekt zelf uit, cirkel voor cirkel, hoe jij met diegene verbonden bent — via archieven, familieverhalen of eigen onderzoek.</p>
+    <h3>Geen winnaar, wel een ontmoeting</h3>
+    <p>Nexus is geen wedstrijd. Het doel is niet om te winnen, maar om af te tasten hoe dicht twee volslagen onbekenden eigenlijk bij elkaar staan — wie dan ook, waar ook ter wereld. Het aantal stappen wordt bijgehouden, niet om te vergelijken, maar om zichtbaar te maken hoe kort of lang de weg was.</p>
+    <h3>Spelregels</h3>
+    <ol>
+      <li>Twee spelers vullen ieder hun naam in — jij onderaan, de ander bovenaan.</li>
+      <li>Een stap is geen losse persoon, maar een hele cirkel: zo lang jij aan zet bent, gooi je zoveel vislijntjes uit als je wil — elk vanuit een van je eigen personen naar iemand die jij via hen kent.</li>
+      <li>Kies per lijntje een emoji, een naam en een korte relatie-omschrijving (bv. "buurvrouw van opa").</li>
+      <li>Kies het type band: een doorlopende lijn voor familie, 💍 voor een partner, 🌿🤷 voor een losse band die toch belangrijk is, of 🎣 als je nog rondtast en nog geen concrete naam hebt.</li>
+      <li>Klaar met je cirkel? Rond 'm af — dan is de ander aan zet en golft hun netwerk verder naar buiten.</li>
+      <li>In de volgende cirkel gooi je weer lijntjes uit, nu vanuit de mensen die je net had toegevoegd — zo breidt je netwerk zich steeds verder uit, als wortels die door de grond naar water zoeken.</li>
+      <li>Zodra een naam bij jou en bij de ander voorkomt, is de verbinding gevonden — de app markeert 'm en telt het aantal cirkels dat nodig was.</li>
+      <li>Bewaar een gevonden verbinding als PDF via het PDF-tabblad.</li>
+    </ol>
+  `
+},
+it: {
+  title:"Nexus", tagline:"Due persone, ciascuna dal proprio lato. Costruite la vostra rete e scoprite quanti passi servono per incontrarvi.",
+  tabSpel:"Gioco", tabOver:"Info", tabPdf:"PDF", tabPrompts:"Aiuto ricerca",
+  promptsIntro:"Prompt pronti da copiare e incollare in un assistente IA — per modalità e fase di ricerca. Riempi le parentesi [...] con i tuoi dati prima di incollare.",
+  copyBtn:"Copia", copiedBtn:"Copiato ✓",
+  legFamily:"famiglia", legPartner:"partner", legBridge:"legame indiretto", legFish:"nessun nome ancora, si cerca",
+  labelA:"Nome giocatore A (in basso)", labelB:"Nome giocatore B (in alto)", startBtn:"Inizia il gioco",
+  modeLiveTitle:"Presente — insieme a qualcun altro", modeLiveSub:"Due giocatori, dal vivo, ciascuno dal proprio lato.",
+  modeSoloTitle:"Passato — da solo, verso una persona storica", modeSoloSub:"Cerchi tu stesso come sei collegato a qualcuno del passato.",
+  labelSelf:"Il tuo nome", labelHistoric:"Persona storica (l'obiettivo)",
+  phHistoric:"es. Napoleone Bonaparte",
+  nextCircleBtn:"Cerchio successivo →",
+  soloRing:(n)=>`il tuo cerchio ${n}`,
+  circlesWord:"cerchi",
+  matchBannerSolo:(name,total)=>`🎉 Connessione trovata con "${name}" — scoperta in ${total} cerchi.`,
+  phName:"nome (es. Zio Jan)", phRel:"relazione (es. fratello del padre)",
+  cancelBtn:"Annulla", placeBtn:"Getta la lenza", addBtn:"+ getta una lenza", endRingBtn:"Chiudi il cerchio →", resetBtn:"ricomincia",
+  turnA:"tocca al giocatore in basso", turnB:"tocca al giocatore in alto",
+  ringLabel:(n)=>`cerchio ${n}`,
+  matchBanner:(name,total)=>`🎉 Connessione trovata con "${name}" — insieme ${total} cerchi per raggiungersi.`,
+  stepsCounter:(a,b)=>`${a} + ${b} cerchi`,
+  composerHint:(name,side)=>`Nuova lenza a partire da ${name} (lato ${side==='A'?'tuo':'loro'})`,
+  fromLabel:(name)=>`punto di partenza: ${name} — tocca un altro cerchio per cambiare`,
+  pdfNoMatch:"Non è ancora stata trovata una connessione. Quando entrambi i lati arrivano allo stesso nome, qui apparirà un certificato da stampare o salvare come PDF.",
+  certTitle:"Connessione trovata", printBtn:"Stampa / salva come PDF",
+  footerNote:"libero da usare, non modificabile né rivendibile",
+  over: `
+    <h2>Da dove nasce questo gioco</h2>
+    <p>Si dice che ogni persona — tramite famiglia, amici o conoscenti — sia collegata a chiunque altro sulla terra in cinque o sette passaggi. Questa idea, nota come "six degrees of separation", fu studiata negli anni '60 dallo psicologo Stanley Milgram ed è stata poi confermata sulle grandi reti sociali.</p>
+    <p>Una connessione del genere non si può calcolare senza accesso alla rete completa di ognuno — dati che per le persone comuni non esistono. Quello che si può fare, invece, è viverla in prima persona. Non come calcolo, ma come gioco.</p>
+    <div class="anecdote">Le connessioni casuali spesso emergono per caso. Per esempio quando scopri che tu e uno sconosciuto avete ricevuto entrambi una cartolina dalla stessa zia — o che un collega del tuo vicino è per caso un tuo ex compagno di scuola. Nexus cerca di rendere visibile proprio questa sensazione.</div>
+    <h3>Presente o passato</h3>
+    <p>Nexus ha due modalità. In <b>Presente</b> giochi dal vivo con un'altra persona, ciascuno dal proprio lato. In <b>Passato</b> giochi da solo: scegli una persona storica come obiettivo e scopri tu stesso, cerchio dopo cerchio, come sei collegato a lei — tramite archivi, storie di famiglia o ricerche personali.</p>
+    <h3>Non si vince, ci si incontra</h3>
+    <p>Nexus non è una gara. L'obiettivo non è vincere, ma scoprire quanto siano vicine due persone del tutto sconosciute — chiunque esse siano, ovunque nel mondo. Il numero di passi viene registrato non per confrontare, ma per rendere visibile quanto è stato breve o lungo il percorso.</p>
+    <h3>Regole del gioco</h3>
+    <ol>
+      <li>Due giocatori inseriscono il proprio nome — tu in basso, l'altro in alto.</li>
+      <li>Un passo non è una singola persona, ma un intero cerchio: finché tocca a te, getti tutte le lenze che vuoi — ognuna da una delle tue persone verso qualcuno che conosci tramite loro.</li>
+      <li>Scegli per ogni lenza un emoji, un nome e una breve descrizione della relazione (es. "vicina di nonno").</li>
+      <li>Scegli il tipo di legame: linea continua per la famiglia, 💍 per un partner, 🌿🤷 per un legame indiretto ma importante, o 🎣 se stai ancora cercando e non hai un nome concreto.</li>
+      <li>Finito il tuo cerchio? Chiudilo — tocca all'altro, la cui rete si espande a sua volta.</li>
+      <li>Nel cerchio successivo getti nuove lenze partendo dalle persone appena aggiunte — così la tua rete si espande sempre più, come radici che cercano acqua nel terreno.</li>
+      <li>Quando un nome compare da entrambi i lati, la connessione è trovata — l'app la evidenzia e conta quanti cerchi sono serviti.</li>
+      <li>Salva una connessione trovata come PDF nella scheda PDF.</li>
+    </ol>
+  `
+},
+en: {
+  title:"Nexus", tagline:"Two people, each from their own side. Grow your network and see how many steps it takes to reach each other.",
+  tabSpel:"Game", tabOver:"About", tabPdf:"PDF", tabPrompts:"Search help",
+  promptsIntro:"Ready-made prompts to copy and paste into an AI assistant — by mode and search phase. Fill in the brackets [...] with your own details before pasting.",
+  copyBtn:"Copy", copiedBtn:"Copied ✓",
+  legFamily:"family", legPartner:"partner", legBridge:"loose tie", legFish:"no name yet, reaching out",
+  labelA:"Player A name (bottom)", labelB:"Player B name (top)", startBtn:"Start the game",
+  modeLiveTitle:"Present — together with someone else", modeLiveSub:"Two players, live, each from their own side.",
+  modeSoloTitle:"Past — alone, toward a historical person", modeSoloSub:"You research your own link to someone from history.",
+  labelSelf:"Your name", labelHistoric:"Historical person (the goal)",
+  phHistoric:"e.g. Napoleon Bonaparte",
+  nextCircleBtn:"Next circle →",
+  soloRing:(n)=>`your circle ${n}`,
+  circlesWord:"circles",
+  matchBannerSolo:(name,total)=>`🎉 Connection found at "${name}" — traced in ${total} circles.`,
+  phName:"name (e.g. Uncle John)", phRel:"relation (e.g. father's brother)",
+  cancelBtn:"Cancel", placeBtn:"Cast the line", addBtn:"+ cast a line", endRingBtn:"Close this circle →", resetBtn:"restart",
+  turnA:"bottom player's turn", turnB:"top player's turn",
+  ringLabel:(n)=>`circle ${n}`,
+  matchBanner:(name,total)=>`🎉 Connection found at "${name}" — ${total} combined circles to reach each other.`,
+  stepsCounter:(a,b)=>`${a} + ${b} circles`,
+  composerHint:(name,side)=>`New line from ${name} (${side==='A'?'your':'their'} side)`,
+  fromLabel:(name)=>`starting point: ${name} — tap another circle to switch`,
+  pdfNoMatch:"No connection has been found yet. Once both sides reach the same name, a certificate will appear here that you can print or save as PDF.",
+  certTitle:"Connection found", printBtn:"Print / save as PDF",
+  footerNote:"free to use, not to be altered or resold",
+  over: `
+    <h2>Where this game comes from</h2>
+    <p>It's often said that every person — through family, friends or acquaintances — is connected to anyone else on earth in five to seven steps. This idea, known as "six degrees of separation", was studied in the 1960s by psychologist Stanley Milgram and has since been confirmed on large social networks.</p>
+    <p>You can't calculate such a connection without access to everyone's complete network — that data simply doesn't exist for ordinary people. What you can do is experience it yourself. Not as a calculation, but as a game.</p>
+    <div class="anecdote">Chance connections often only occur to you in passing — like discovering that you and a stranger both once received a postcard from the same aunt, or that a colleague of your neighbour happens to be an old classmate of yours. Nexus tries to make that feeling visible.</div>
+    <h3>Present or past</h3>
+    <p>Nexus has two modes. In <b>Present</b> you play live with someone else, each from your own side. In <b>Past</b> you play alone: you pick a historical person as your goal and find out, circle by circle, how you're connected to them — through archives, family stories, or your own research.</p>
+    <h3>No winner, just a meeting point</h3>
+    <p>Nexus isn't a competition. The goal isn't to win, but to probe how close two complete strangers really are to each other — whoever they are, wherever in the world. The step count is kept not to compare, but to show how short or long the path turned out to be.</p>
+    <h3>How to play</h3>
+    <ol>
+      <li>Two players each enter their name — you at the bottom, the other at the top.</li>
+      <li>A step isn't a single person, it's a whole circle: while it's your turn, cast as many lines as you like — each from one of your own people to someone you know through them.</li>
+      <li>For each line, pick an emoji, a name, and a short relation description (e.g. "grandfather's neighbour").</li>
+      <li>Choose the tie type: a plain line for family, 💍 for a partner, 🌿🤷 for a loose but meaningful tie, or 🎣 if you're still reaching and don't have a concrete name yet.</li>
+      <li>Done with your circle? Close it — then it's the other side's turn, and their network ripples outward too.</li>
+      <li>In the next circle you cast new lines starting from the people you just added — your network keeps expanding, like roots searching through soil for water.</li>
+      <li>Once a name appears on both sides, the connection is found — the app highlights it and counts how many circles it took.</li>
+      <li>Save a found connection as a PDF from the PDF tab.</li>
+    </ol>
+  `
+}
+};
+
+const PROMPTS = {
+nl: { live: [
+  {group:"Zone 1 — je eigen kring in kaart brengen", title:"Breinstorm mijn directe kring", text:"Help me een zo compleet mogelijk overzicht te maken van mensen die ik ken. Werk met me af, categorie voor categorie: familie, huidig en vroeger werk, buren, sportclubs/verenigingen, school/studie, vriendengroepen, online communities, en vaste dienstverleners (huisarts, kapper, notaris). Stel me per categorie gerichte vragen zodat ik niemand vergeet."},
+  {group:"Zone 2 en verder — dieper uitzoeken", title:"Denk mee over iemands netwerk", text:"Ik probeer te bedenken wie [naam] zou kunnen kennen. Wat ik weet: [beroep, woonplaats, leeftijd, hobby's, opleiding — vul aan]. Help me nadenken over voor de hand liggende en minder voor de hand liggende manieren waarop deze persoon aan een breed netwerk komt, en welke vragen ik het beste aan [naam] zelf kan stellen om dat netwerk in kaart te brengen."},
+  {group:"Een vermoeden checken", title:"Check een mogelijke brug", text:"Ik vermoed dat [persoon A] en [persoon B] misschien een connectie delen. Wat ik weet over A: [...]. Wat ik weet over B: [...]. Help me bedenken via welke wegen ze elkaar zouden kunnen kennen, en aan wie ik het beste welke vraag kan stellen om dat te bevestigen."}
+], solo: [
+  {group:"Fase 1 — je eigen stamboom starten", title:"Begin je stamboom", text:"Ik wil mijn eigen familiegeschiedenis in kaart brengen als startpunt voor een zoektocht naar een verbinding met [naam historische persoon]. Ik ken al: [namen/geboortejaren van ouders, grootouders die je kent]. Help me een stappenplan maken om verder terug te zoeken: welke informatie heb ik per generatie nodig, en welke bronnen zijn daarvoor geschikt in [land]?"},
+  {group:"Fase 2 — archieven doorzoeken", title:"Doorzoek online archieven", text:"Ik zoek archiefgegevens over [naam, geschatte periode, plaats]. Welke online archieven en genealogische databases zijn hiervoor het meest geschikt (bv. voor Nederland: WieWasWie, Open Archieven, Delpher; internationaal: FamilySearch, Ancestry)? Geef ook tips voor zoektermen en veelvoorkomende spellingsvarianten van namen uit die periode."},
+  {group:"Fase 2 — oude documenten lezen", title:"Ontcijfer een oud document", text:"Ik heb een [type document, bv. doopakte/huwelijksakte] uit [jaar] die ik moeilijk kan lezen. Welke veelvoorkomende afkortingen, handschriftstijlen of taalgebruik uit die periode moet ik kennen om dit soort documenten beter te ontcijferen? [Beschrijf wat je al wel kunt lezen.]"},
+  {group:"Fase 3 — het spoor naar het doel", title:"Volg het spoor naar de historische persoon", text:"Ik onderzoek of en hoe ik mogelijk verbonden ben met [naam historische persoon, geboortejaar/plaats]. Wat weet je over de familie, nakomelingen en directe kring van deze persoon? Help me nadenken welke lijnen (bv. een streek, beroep of achternaam) het kansrijkst zijn om verder uit te zoeken vanuit mijn verste bekende voorouder: [naam/plaats/periode]."},
+  {group:"Controle", title:"Check de aannemelijkheid van je keten", text:"Ik heb de volgende keten van verbindingen gevonden tussen mezelf en [naam]: [beschrijf de keten]. Klopt deze keten qua tijdlijn en aannemelijkheid (leeftijden, sterfjaren, geografische afstand)? Waar zitten de zwakke schakels die ik beter zou moeten onderbouwen?"}
+]},
+it: { live: [
+  {group:"Cerchio 1 — mappa la tua rete diretta", title:"Fai un brainstorm della mia rete diretta", text:"Aiutami a fare una panoramica il più possibile completa delle persone che conosco. Procediamo categoria per categoria: famiglia, lavoro attuale e passato, vicini di casa, club sportivi/associazioni, scuola/studi, gruppi di amici, comunità online, e fornitori di servizi abituali (medico, parrucchiere, notaio). Fammi domande mirate per ogni categoria così non dimentico nessuno."},
+  {group:"Cerchio 2 e oltre — approfondire", title:"Aiutami a pensare alla rete di qualcuno", text:"Sto cercando di capire chi potrebbe conoscere [nome]. Quello che so: [professione, città, età, hobby, formazione — completa]. Aiutami a pensare a modi ovvi e meno ovvi con cui questa persona potrebbe avere una rete ampia, e quali domande potrei fare direttamente a [nome] per mappare quella rete."},
+  {group:"Verificare un sospetto", title:"Verifica un possibile ponte", text:"Sospetto che [persona A] e [persona B] condividano una connessione. Quello che so su A: [...]. Quello che so su B: [...]. Aiutami a pensare a come potrebbero conoscersi, e a chi potrei chiedere cosa per confermarlo."}
+], solo: [
+  {group:"Fase 1 — inizia il tuo albero genealogico", title:"Inizia il tuo albero genealogico", text:"Voglio mappare la storia della mia famiglia come punto di partenza per una ricerca su una connessione con [nome persona storica]. So già: [nomi/anni di nascita di genitori, nonni che conosci]. Aiutami a creare un piano per risalire ulteriormente: quali informazioni mi servono per ogni generazione, e quali fonti sono adatte in [paese]?"},
+  {group:"Fase 2 — consultare gli archivi", title:"Consulta gli archivi online", text:"Cerco dati d'archivio su [nome, periodo stimato, luogo]. Quali archivi online e database genealogici sono più adatti (es. per l'Italia: Antenati - Portale Archivi di Stato, FamilySearch; internazionali: Ancestry)? Dammi anche consigli su termini di ricerca e varianti ortografiche comuni dei nomi in quel periodo."},
+  {group:"Fase 2 — leggere documenti antichi", title:"Decifra un documento antico", text:"Ho un [tipo di documento, es. atto di battesimo/matrimonio] del [anno] che faccio fatica a leggere. Quali abbreviazioni comuni, stili di scrittura o linguaggio dell'epoca dovrei conoscere per decifrare meglio questo tipo di documenti? [Descrivi cosa riesci già a leggere.]"},
+  {group:"Fase 3 — seguire la traccia verso l'obiettivo", title:"Segui la traccia verso la persona storica", text:"Sto verificando se e come potrei essere collegato a [nome persona storica, anno/luogo di nascita]. Cosa sai della famiglia, dei discendenti e della cerchia diretta di questa persona? Aiutami a pensare quali linee (es. una regione, una professione o un cognome) sono più promettenti da approfondire a partire dal mio antenato più lontano conosciuto: [nome/luogo/periodo]."},
+  {group:"Controllo", title:"Verifica la plausibilità della tua catena", text:"Ho trovato la seguente catena di connessioni tra me e [nome]: [descrivi la catena]. Questa catena è plausibile in termini di tempistica (età, anni di morte, distanza geografica)? Dove sono gli anelli deboli che dovrei documentare meglio?"}
+]},
+en: { live: [
+  {group:"Circle 1 — map your direct network", title:"Brainstorm my direct circle", text:"Help me build as complete an overview as possible of the people I know. Go through it category by category with me: family, current and past work, neighbours, sports clubs/associations, school/studies, friend groups, online communities, and regular service providers (doctor, hairdresser, notary). Ask me targeted questions per category so I don't forget anyone."},
+  {group:"Circle 2 and beyond — digging deeper", title:"Help me think through someone's network", text:"I'm trying to figure out who [name] might know. What I know: [profession, city, age, hobbies, education — fill in]. Help me think of obvious and less obvious ways this person could have a wide network, and what questions I could best ask [name] directly to map that network."},
+  {group:"Checking a hunch", title:"Check a possible bridge", text:"I suspect [person A] and [person B] might share a connection. What I know about A: [...]. What I know about B: [...]. Help me think through how they might know each other, and who I could best ask what to confirm it."}
+], solo: [
+  {group:"Phase 1 — start your family tree", title:"Start your family tree", text:"I want to map my own family history as a starting point for researching a connection to [name of historical person]. I already know: [names/birth years of parents, grandparents you know]. Help me build a step-by-step plan to trace further back: what information do I need per generation, and which sources are suitable in [country]?"},
+  {group:"Phase 2 — searching archives", title:"Search online archives", text:"I'm looking for archival records on [name, estimated period, place]. Which online archives and genealogical databases are best suited for this (e.g. FamilySearch, Ancestry, or country-specific archives)? Also give me tips on search terms and common spelling variants of names from that period."},
+  {group:"Phase 2 — reading old documents", title:"Decipher an old document", text:"I have a [type of document, e.g. baptism/marriage record] from [year] that's hard to read. What common abbreviations, handwriting styles, or period language should I know to decipher this kind of document better? [Describe what you can already read.]"},
+  {group:"Phase 3 — following the trail to the target", title:"Trace the trail to the historical person", text:"I'm researching whether and how I might be connected to [name of historical person, birth year/place]. What do you know about this person's family, descendants and immediate circle? Help me think through which lines (e.g. a region, occupation, or surname) are most promising to pursue further from my furthest known ancestor: [name/place/period]."},
+  {group:"Sanity check", title:"Check how plausible your chain is", text:"I've found the following chain of connections between myself and [name]: [describe the chain]. Does this chain hold up in terms of timeline and plausibility (ages, death years, geographic distance)? Where are the weak links I should document better?"}
+]}
+};
+
+let currentLang = 'nl';
+
+function setLang(l){
+  currentLang = l;
+  document.querySelectorAll('.langsw button').forEach(b=>b.classList.toggle('active', b.dataset.lang===l));
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    const key = el.dataset.i18n;
+    if(TR[l][key] !== undefined && typeof TR[l][key] === 'string') el.textContent = TR[l][key];
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{
+    const key = el.dataset.i18nPh;
+    if(TR[l][key]) el.placeholder = TR[l][key];
+  });
+  document.getElementById('overContent').innerHTML = TR[l].over;
+  renderPrompts();
+  if(state){ render(); }
+  else {
+    document.getElementById('pdfNoMatch').textContent = TR[l].pdfNoMatch;
+    const mode = selectedMode || 'live';
+    document.getElementById('labelAText').textContent = mode==='solo' ? TR[l].labelSelf : TR[l].labelA;
+    document.getElementById('labelBText').textContent = mode==='solo' ? TR[l].labelHistoric : TR[l].labelB;
+    if(selectedMode==='solo') document.getElementById('nameB').placeholder = TR[l].phHistoric;
+  }
+}
+
+function showTab(name){
+  document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  document.querySelector(`.tab-btn[data-tab="${name}"]`).classList.add('active');
+  if(name==='prompts') renderPrompts();
+}
+
+let promptMode = 'live';
+function showPromptMode(mode){
+  promptMode = mode;
+  document.getElementById('promptModeLive').classList.toggle('active', mode==='live');
+  document.getElementById('promptModeSolo').classList.toggle('active', mode==='solo');
+  renderPrompts();
+}
+
+function renderPrompts(){
+  const list = PROMPTS[currentLang][promptMode];
+  const wrap = document.getElementById('promptList');
+  wrap.innerHTML = '';
+  let lastGroup = null;
+  list.forEach((p,i)=>{
+    if(p.group !== lastGroup){
+      const h = document.createElement('div');
+      h.className='prompt-group-title';
+      h.textContent = p.group;
+      wrap.appendChild(h);
+      lastGroup = p.group;
+    }
+    const card = document.createElement('div');
+    card.className='prompt-card';
+    const btnId = 'copybtn-'+i;
+    card.innerHTML = `<h4>${p.title}</h4><pre>${p.text}</pre><button id="${btnId}" onclick="copyPrompt(${i})">${TR[currentLang].copyBtn}</button>`;
+    wrap.appendChild(card);
+  });
+}
+
+function copyPrompt(i){
+  const text = PROMPTS[currentLang][promptMode][i].text;
+  const btn = document.getElementById('copybtn-'+i);
+  navigator.clipboard.writeText(text).then(()=>{
+    btn.textContent = TR[currentLang].copiedBtn;
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent = TR[currentLang].copyBtn; btn.classList.remove('copied'); }, 1800);
+  }).catch(()=>{});
+}
+
+/* ===================== GAME LOGIC ===================== */
+const EMOJIS = ['🧑','👩','🧔','👴','👵','👦','👧','🧑‍🦱','🧕','👨‍🦳','👩‍🦳','🧓'];
+const LINKTYPES = [
+  {id:'familie', symbol:''},
+  {id:'partner', symbol:'💍'},
+  {id:'brug', symbol:'🌿🤷‍♂️'},
+  {id:'vissen', symbol:'🎣'}
+];
+function linkLabel(id){
+  const t = TR[currentLang];
+  if(id==='familie') return t.legFamily;
+  if(id==='partner') return '💍 '+t.legPartner;
+  if(id==='brug') return '🌿🤷 '+t.legBridge;
+  if(id==='vissen') return '🎣 '+t.legFish;
+}
+
+let state = null;
+let selectedMode = null;
+
+function chooseMode(mode){
+  selectedMode = mode;
+  document.getElementById('modeBtnLive').classList.toggle('active', mode==='live');
+  document.getElementById('modeBtnSolo').classList.toggle('active', mode==='solo');
+  const t = TR[currentLang];
+  document.getElementById('labelAText').textContent = mode==='solo' ? t.labelSelf : t.labelA;
+  document.getElementById('labelBText').textContent = mode==='solo' ? t.labelHistoric : t.labelB;
+  document.getElementById('nameB').placeholder = mode==='solo' ? t.phHistoric : '?';
+  document.getElementById('setupFields').classList.remove('hidden');
+}
+
+function startGame(){
+  if(!selectedMode) selectedMode = 'live';
+  const nameA = document.getElementById('nameA').value.trim() || 'A';
+  const nameB = document.getElementById('nameB').value.trim() || 'B';
+  state = {
+    mode: selectedMode,
+    turn:'A',
+    nodes:{
+      A:[{id:'A-0',parentId:null,emoji:'🧑',name:nameA,relation:'',linkType:null,depth:0}],
+      B:[{id:'B-0',parentId:null,emoji: selectedMode==='solo' ? '📜' : '🧑',name:nameB,relation:'',linkType:null,depth:0}]
+    },
+    selected:{A:'A-0',B:'B-0'},
+    ring:{A:0,B:0},
+    ringStarted:{A:false,B:false},
+    pendingEmoji:EMOJIS[0],
+    pendingType:'familie',
+    matched:null
+  };
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('game').classList.remove('hidden');
+  document.getElementById('game').style.display='flex';
+  buildComposerChoices();
+  render();
+}
+
+function resetGame(){
+  state = null;
+  selectedMode = null;
+  document.getElementById('modeBtnLive').classList.remove('active');
+  document.getElementById('modeBtnSolo').classList.remove('active');
+  document.getElementById('setupFields').classList.add('hidden');
+  document.getElementById('nameA').value='';
+  document.getElementById('nameB').value='';
+  document.getElementById('game').classList.add('hidden');
+  document.getElementById('setup').classList.remove('hidden');
+  document.getElementById('banner').classList.add('hidden');
+  document.getElementById('pdfReady').classList.add('hidden');
+  document.getElementById('pdfNoMatch').classList.remove('hidden');
+}
+
+function buildComposerChoices(){
+  const er = document.getElementById('emojiRow');
+  er.innerHTML='';
+  EMOJIS.forEach(e=>{
+    const b=document.createElement('button');
+    b.textContent=e; b.className=(e===state.pendingEmoji)?'active':'';
+    b.onclick=()=>{state.pendingEmoji=e;buildComposerChoices();};
+    er.appendChild(b);
+  });
+  const lt=document.getElementById('linkTypes');
+  lt.innerHTML='';
+  LINKTYPES.forEach(t=>{
+    const b=document.createElement('button');
+    b.textContent=linkLabel(t.id); b.className=(t.id===state.pendingType)?'active':'';
+    b.onclick=()=>{state.pendingType=t.id;buildComposerChoices();};
+    lt.appendChild(b);
+  });
+}
+
+function openComposer(){
+  const side=state.turn;
+  document.getElementById('composerHint').textContent =
+    TR[currentLang].composerHint(nodeById(side,state.selected[side]).name, side);
+  document.getElementById('nodeName').value='';
+  document.getElementById('nodeRel').value='';
+  document.getElementById('composer').classList.add('open');
+}
+function closeComposer(){ document.getElementById('composer').classList.remove('open'); }
+function nodeById(side,id){ return state.nodes[side].find(n=>n.id===id); }
+
+function commitNode(){
+  const side=state.turn, other= side==='A'?'B':'A';
+  let name=document.getElementById('nodeName').value.trim();
+  const rel=document.getElementById('nodeRel').value.trim();
+  if(state.pendingType==='vissen' && !name) name='?';
+  if(!name){ document.getElementById('nodeName').focus(); return; }
+
+  if(!state.ringStarted[side]){
+    state.ring[side] += 1;
+    state.ringStarted[side] = true;
+  }
+
+  const parent=nodeById(side,state.selected[side]);
+  const id=side+'-'+state.nodes[side].length;
+  const node={id,parentId:parent.id,emoji:state.pendingEmoji,name,relation:rel,linkType:state.pendingType,depth:parent.depth+1};
+  state.nodes[side].push(node);
+  // vertrekpunt blijft bewust op de ouder staan — tik een ander bolletje aan om vandaar verder te gaan
+
+  if(state.pendingType!=='vissen'){
+    const norm=s=>s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+    const hit=state.nodes[other].find(n=>(state.mode==='solo' || n.parentId!==null) && norm(n.name)===norm(name));
+    if(hit) state.matched={a: side==='A'?node:hit, b: side==='A'?hit:node};
+  }
+
+  closeComposer();
+  render();
+}
+
+function endRing(){
+  const side=state.turn, other= side==='A'?'B':'A';
+  state.ringStarted[side] = false;
+  if(state.mode!=='solo'){
+    state.turn = other;
+  }
+  render();
+}
+
+function stepsOf(side){ return state.ring[side]; }
+
+function render(){
+  const t=TR[currentLang];
+  document.getElementById('turnPill').className='turn-pill '+state.turn.toLowerCase();
+  const ringNow = state.ring[state.turn] + (state.ringStarted[state.turn] ? 0 : 1);
+  if(state.mode==='solo'){
+    document.getElementById('turnPill').textContent = t.soloRing(ringNow);
+    document.getElementById('stepCounter').textContent = `${stepsOf('A')} ${t.circlesWord}`;
+    document.getElementById('endRingBtn').textContent = t.nextCircleBtn;
+  } else {
+    document.getElementById('turnPill').textContent = (state.turn==='A' ? t.turnA : t.turnB) + ' · ' + t.ringLabel(ringNow);
+    document.getElementById('stepCounter').textContent = t.stepsCounter(stepsOf('A'),stepsOf('B'));
+    document.getElementById('endRingBtn').textContent = t.endRingBtn;
+  }
+
+  const currentParent = nodeById(state.turn, state.selected[state.turn]);
+  document.getElementById('fromPill').textContent = t.fromLabel(currentParent.name);
+
+  const banner=document.getElementById('banner');
+  if(state.matched){
+    const total=stepsOf('A')+stepsOf('B');
+    banner.classList.remove('hidden');
+    banner.textContent = state.mode==='solo' ? t.matchBannerSolo(state.matched.a.name, total) : t.matchBanner(state.matched.a.name, total);
+    updateCertificate();
+  } else {
+    banner.classList.add('hidden');
+  }
+  layoutAndDraw();
+}
+
+function updateCertificate(){
+  const t=TR[currentLang];
+  document.getElementById('pdfNoMatch').classList.add('hidden');
+  document.getElementById('pdfReady').classList.remove('hidden');
+  const nameA = state.nodes.A[0].name, nameB = state.nodes.B[0].name;
+  const total = stepsOf('A')+stepsOf('B');
+  document.getElementById('certNames').textContent = `${nameA}  ⟷  ${nameB}`;
+  document.getElementById('certSteps').textContent = t.stepsCounter(stepsOf('A'),stepsOf('B')) + ` (${total} ${currentLang==='nl'?'totaal':currentLang==='it'?'totale':'total'})`;
+  document.getElementById('certVia').textContent = `${t.certTitle}: "${state.matched.a.name}"`;
+  document.getElementById('cryear').textContent = new Date().getFullYear();
+}
+
+const RING_COLORS = ['#c97b63','#7a9e6f','#6f9a9a','#b58ed6','#d4b06a','#8f9779','#c46a7a','#5f8fae'];
+
+function layoutAndDraw(){
+  const ringSpacing=92, baseRadius=58, margin=60, fixedDistance=460, gapMin=110;
+  const t=TR[currentLang];
+
+  const maxDepthA = Math.max(0, ...state.nodes.A.map(n=>n.depth));
+  const maxDepthB = Math.max(0, ...state.nodes.B.map(n=>n.depth));
+  const maxRadiusA = baseRadius + maxDepthA*ringSpacing;
+  const maxRadiusB = baseRadius + maxDepthB*ringSpacing;
+
+  const boardW = Math.max(600, 2*Math.max(maxRadiusA,maxRadiusB) + 2*margin);
+  const boardH = Math.max(680, fixedDistance+2*margin, maxRadiusA+maxRadiusB+gapMin+2*margin);
+
+  const board=document.getElementById('board');
+  board.style.width=boardW+'px'; board.style.height=boardH+'px';
+
+  // A = onderaan/in basso/bottom, waaier open naar boven. B = bovenaan/in alto/top, waaier open naar beneden (spiegelbeeld).
+  const centerA = {x: boardW/2, y: boardH-margin};
+  const centerB = {x: boardW/2, y: margin};
+  const ANGLE_RANGE = { A:[Math.PI, 2*Math.PI], B:[0, Math.PI] };
+
+  // ---- assign an angle (radians) to every node, fanning within its side's half-circle ----
+  const angleOf = {};
+  function assignAngles(side){
+    const [a0,a1] = ANGLE_RANGE[side];
+    const nodes = state.nodes[side];
+    angleOf[nodes[0].id] = (a0+a1)/2;
+    const byDepth = {};
+    nodes.forEach(n=>{ if(n.depth>0) (byDepth[n.depth]=byDepth[n.depth]||[]).push(n); });
+    const maxD = Math.max(0, ...nodes.map(n=>n.depth));
+    for(let d=1; d<=maxD; d++){
+      const ring = byDepth[d]||[];
+      if(d===1){
+        const n=ring.length;
+        ring.forEach((node,i)=>{
+          const frac = n===1 ? 0.5 : i/(n-1);
+          angleOf[node.id] = a0 + frac*(a1-a0);
+        });
+      } else {
+        const byParent = {};
+        ring.forEach(n=>{ (byParent[n.parentId]=byParent[n.parentId]||[]).push(n); });
+        Object.keys(byParent).forEach(pid=>{
+          const kids = byParent[pid];
+          const parentAngle = angleOf[pid] ?? (a0+a1)/2;
+          const spread = Math.PI/2.6;
+          const n = kids.length;
+          kids.forEach((k,i)=>{
+            const offset = n===1 ? 0 : (i/(n-1)-0.5)*spread;
+            let ang = parentAngle+offset;
+            ang = Math.max(a0, Math.min(a1, ang));
+            angleOf[k.id] = ang;
+          });
+        });
+      }
+    }
+  }
+  assignAngles('A'); assignAngles('B');
+
+  const positions={};
+  [['A',centerA],['B',centerB]].forEach(([side,center])=>{
+    state.nodes[side].forEach(n=>{
+      const r = n.depth===0 ? 0 : baseRadius + n.depth*ringSpacing;
+      const ang = angleOf[n.id]||0;
+      positions[n.id] = { x: center.x + r*Math.cos(ang), y: center.y + r*Math.sin(ang) };
+    });
+  });
+
+  board.querySelectorAll('.node').forEach(el=>el.remove());
+  const svg=document.getElementById('edges');
+  svg.setAttribute('width',boardW); svg.setAttribute('height',boardH); svg.innerHTML='';
+
+  // ---- filled zone bands: largest radius drawn first, each smaller one layered on top ----
+  // this produces the nested "rainbow" look — every visible band is one step/zone, in its own colour.
+  function sectorPath(cx,cy,r,a0,a1,steps=48){
+    let d = `M ${cx} ${cy} `;
+    for(let i=0;i<=steps;i++){
+      const a = a0 + (a1-a0)*(i/steps);
+      d += `L ${cx+r*Math.cos(a)} ${cy+r*Math.sin(a)} `;
+    }
+    return d + 'Z';
+  }
+  [['A',centerA,maxDepthA],['B',centerB,maxDepthB]].forEach(([side,center,maxD])=>{
+    const [a0,a1] = ANGLE_RANGE[side];
+    for(let d=Math.max(1,maxD); d>=1; d--){
+      const r = baseRadius + d*ringSpacing;
+      const col = RING_COLORS[(d-1)%RING_COLORS.length];
+      const poly=document.createElementNS('http://www.w3.org/2000/svg','path');
+      poly.setAttribute('d', sectorPath(center.x,center.y,r,a0,a1));
+      poly.setAttribute('fill',col); poly.setAttribute('fill-opacity','0.30');
+      svg.appendChild(poly);
+    }
+    // zone number labels along the outer edge
+    for(let d=1; d<=maxD; d++){
+      const r = baseRadius + d*ringSpacing;
+      const col = RING_COLORS[(d-1)%RING_COLORS.length];
+      const midA=(a0+a1)/2;
+      const lx = center.x + r*Math.cos(midA);
+      const ly = center.y + r*Math.sin(midA) + (side==='A' ? -8 : 16);
+      const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+      lbl.setAttribute('x',lx); lbl.setAttribute('y',ly);
+      lbl.setAttribute('text-anchor','middle'); lbl.setAttribute('font-size','10');
+      lbl.setAttribute('fill',col); lbl.textContent=t.ringLabel(d);
+      svg.appendChild(lbl);
+    }
+  });
+
+  // ---- tentacles: straight, light-coloured lines on top of the zone bands ----
+  ['A','B'].forEach(side=>{
+    state.nodes[side].forEach(n=>{
+      if(n.parentId){
+        const p=positions[n.parentId], c=positions[n.id];
+        const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+        path.setAttribute('d',`M ${p.x} ${p.y} L ${c.x} ${c.y}`);
+        path.setAttribute('fill','none');
+        path.setAttribute('stroke','#e9e4d6'); path.setAttribute('stroke-opacity','0.85');
+        path.setAttribute('stroke-width','5'); path.setAttribute('stroke-linecap','round');
+        let dash='';
+        if(n.linkType==='brug') dash='2,7';
+        if(n.linkType==='vissen') dash='1,6';
+        if(dash) path.setAttribute('stroke-dasharray',dash);
+        svg.appendChild(path);
+        const midX=(p.x+c.x)/2, midY=(p.y+c.y)/2;
+        if(n.linkType && n.linkType!=='familie'){
+          const sym=LINKTYPES.find(lt=>lt.id===n.linkType).symbol;
+          const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
+          txt.setAttribute('x',midX); txt.setAttribute('y',midY-6);
+          txt.setAttribute('text-anchor','middle'); txt.setAttribute('font-size','13');
+          txt.textContent=sym; svg.appendChild(txt);
+        }
+      }
+    });
+  });
+
+  ['A','B'].forEach(side=>{
+    state.nodes[side].forEach(n=>{
+      const pos=positions[n.id];
+      const div=document.createElement('div');
+      let cls='node '+side.toLowerCase();
+      if(n.depth===0) cls+=' root';
+      const isActive = (side===state.turn && state.selected[side]===n.id);
+      if(isActive) cls+=' selected';
+      if(state.matched && (state.matched.a.id===n.id||state.matched.b.id===n.id)) cls+=' matched';
+      div.className=cls; div.style.left=pos.x+'px'; div.style.top=pos.y+'px';
+      div.innerHTML=`${isActive?'<div class="active-tag">👇</div>':''}<div class="bubble">${n.emoji}</div><div class="label">${n.name}</div><div class="rel">${n.relation||''}</div>`;
+      div.onclick=()=>{ if(side===state.turn){ state.selected[side]=n.id; render(); } };
+      board.appendChild(div);
+    });
+  });
+}
+
+/* ===================== COPYRIGHT PROTECTION ===================== */
+(function(){
+  const NOTICE = "© Jan den Hollander";
+  function blockApp(reason){
+    document.body.innerHTML = '<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#12160f;color:#e9e4d6;font-family:monospace;text-align:center;padding:20px;">' +
+      '<div>Deze app is beschermd materiaal van Jan den Hollander.<br>Integriteitscontrole mislukt (' + reason + ').</div></div>';
+  }
+  window.addEventListener('load', function(){
+    const footer = document.querySelector('footer.copyright');
+    if(!footer || !footer.textContent.includes('Jan den Hollander')){ blockApp('footer'); return; }
+    const observer = new MutationObserver(function(){
+      const f = document.querySelector('footer.copyright');
+      if(!f || !f.textContent.includes('Jan den Hollander')){
+        observer.disconnect();
+        blockApp('gewijzigd');
+      }
+    });
+    observer.observe(document.body, {childList:true, subtree:true, characterData:true});
+  });
+})();
+
+/* ===================== PWA ===================== */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+
+/* ===================== INIT ===================== */
+document.getElementById('cryear2').textContent = new Date().getFullYear();
+setLang('nl');
+</script>
+</body>
+</html>
